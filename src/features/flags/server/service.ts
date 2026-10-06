@@ -49,7 +49,6 @@ export async function listFlags(): Promise<FeatureFlag[]> {
 export async function createFlag(
   input: z.infer<typeof createFlagSchema>,
   source?: string | null,
-  ownerDemoSessionId?: string | null,
 ): Promise<FeatureFlag> {
   const sql = getDb();
   const [flag] = await sql`
@@ -59,8 +58,7 @@ export async function createFlag(
       enabled,
       rollout_pct,
       rules,
-      source,
-      owner_demo_session_id
+      source
     )
     VALUES (
       ${input.name},
@@ -68,8 +66,7 @@ export async function createFlag(
       ${input.enabled},
       ${input.rollout_pct},
       ${sql.json(input.rules as Parameters<typeof sql.json>[0])},
-      ${source ?? null},
-      ${ownerDemoSessionId ?? null}
+      ${source ?? null}
     )
     RETURNING *
   `;
