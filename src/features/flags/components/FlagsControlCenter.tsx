@@ -581,8 +581,8 @@ export function FlagsControlCenter() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-(--text-primary) sm:text-3xl">
+      <div className="rounded-xl border border-(--border-subtle) bg-(--surface-overlay)/70 p-4">
+        <h1 className="text-2xl font-semibold text-(--text-primary) sm:text-3xl">
           Feature Flag Control Center
         </h1>
         <p className="mt-2 text-sm text-(--text-secondary)">
@@ -619,7 +619,7 @@ export function FlagsControlCenter() {
       )}
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
+        <section id="flag-create" className="rounded-xl p-5 app-card">
           <h2 className="mb-3 text-sm font-semibold text-(--text-primary)">Create flag</h2>
           <form onSubmit={createNewFlag} className="space-y-3">
             <div>
@@ -636,7 +636,7 @@ export function FlagsControlCenter() {
                 placeholder="flag_example"
                 aria-invalid={Boolean(createFieldErrors.name)}
                 aria-describedby={createFieldErrors.name ? "flag-key-error" : undefined}
-                className="w-full rounded border border-(--border-default) bg-(--surface-base) px-3 py-2 text-sm text-(--text-primary)"
+                className="w-full rounded px-3 py-2 text-sm app-input"
                 required
               />
             </div>
@@ -656,13 +656,13 @@ export function FlagsControlCenter() {
                 aria-describedby={
                   createFieldErrors.description ? "flag-description-error" : undefined
                 }
-                className="w-full rounded border border-(--border-default) bg-(--surface-base) px-3 py-2 text-sm text-(--text-primary)"
+                className="w-full rounded px-3 py-2 text-sm app-input"
               />
             </div>
             <button
               type="submit"
               disabled={creating || schemaUnavailable}
-              className="rounded border border-(--border-default) bg-(--nebula-muted) px-3 py-2 text-sm font-medium text-(--nebula) disabled:opacity-50"
+              className="rounded px-3 py-2 text-sm font-medium app-button-primary disabled:opacity-50"
             >
               {creating ? "Creating…" : "Create"}
             </button>
@@ -681,10 +681,10 @@ export function FlagsControlCenter() {
           </div>
         </section>
 
-        <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
+        <section id="flag-evaluate" className="rounded-xl p-5 app-card">
           <h2 className="mb-3 text-sm font-semibold text-(--text-primary)">Evaluation context</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
             <label
               htmlFor="flag-subject-key"
               className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
@@ -696,10 +696,10 @@ export function FlagsControlCenter() {
               value={subjectKey}
               onChange={(e) => setSubjectKey(e.target.value)}
               placeholder="user_123"
-              className="w-full rounded border border-(--border-default) bg-(--surface-base) px-3 py-2 text-sm text-(--text-primary)"
+              className="w-full rounded px-3 py-2 text-sm app-input"
             />
-          </div>
-          <div>
+            </div>
+            <div>
             <label
               htmlFor="flag-context"
               className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
@@ -713,53 +713,55 @@ export function FlagsControlCenter() {
               placeholder='{"tier":"pro"}'
               aria-invalid={Boolean(evaluationFieldError)}
               aria-describedby={evaluationFieldError ? "evaluation-context-error" : undefined}
-              className="w-full font-mono rounded border border-(--border-default) bg-(--surface-base) px-3 py-2 text-xs text-(--text-primary)"
+              className="w-full rounded px-3 py-2 text-xs font-mono app-input"
             />
-          </div>
-        </div>
-        {evaluationFieldError && (
-          <p id="evaluation-context-error" className="mt-2 text-xs text-red-300">
-            {evaluationFieldError}
-          </p>
-        )}
-        <div className="mt-3 rounded border border-(--border-subtle) bg-(--surface-base) p-3 text-xs text-(--text-secondary) space-y-1">
-          <p className="font-medium text-(--text-primary)">Deterministic rollout behavior</p>
-          <p>
-            For the same flag and subject key, the bucket stays stable. The result changes only if
-            rollout percentage, rules, or enabled state changes.
-          </p>
-          {lastEvaluation ? (
-            <div className="rounded border border-(--border-subtle) bg-(--surface-overlay)/60 p-2 text-(--text-muted) space-y-1">
-              <p>
-                Subject:{" "}
-                <span className="font-mono text-(--text-secondary)">
-                  {lastEvaluation.subjectKey}
-                </span>
-              </p>
-              <p>
-                Context:{" "}
-                <span className="font-mono text-(--text-secondary)">
-                  {lastEvaluation.contextRaw}
-                </span>
-              </p>
-              <p>
-                Result: {lastEvaluation.result.enabled ? "Enabled" : "Disabled"} for{" "}
-                <span className="font-mono text-(--text-secondary)">{lastEvaluation.flagName}</span>
-              </p>
-              <p>
-                Bucket {lastEvaluation.result.persistedBucket} compared to rollout{" "}
-                {lastEvaluation.rolloutPct}%
-                {lastEvaluation.result.rule_matched
-                  ? `, with rule ${lastEvaluation.result.rule_matched} matched.`
-                  : "."}
-              </p>
             </div>
-          ) : null}
-        </div>
+          </div>
+          {evaluationFieldError && (
+            <p id="evaluation-context-error" className="mt-2 text-xs text-red-300">
+              {evaluationFieldError}
+            </p>
+          )}
+          <div className="mt-3 rounded border border-(--border-subtle) bg-(--surface-base) p-3 text-xs text-(--text-secondary) space-y-1">
+            <p className="font-medium text-(--text-primary)">Deterministic rollout behavior</p>
+            <p>
+              For the same flag and subject key, the bucket stays stable. The result changes only if
+              rollout percentage, rules, or enabled state changes.
+            </p>
+            {lastEvaluation ? (
+              <div className="rounded border border-(--border-subtle) bg-(--surface-overlay)/60 p-2 text-(--text-muted) space-y-1">
+                <p>
+                  Subject:{" "}
+                  <span className="font-mono text-(--text-secondary)">
+                    {lastEvaluation.subjectKey}
+                  </span>
+                </p>
+                <p>
+                  Context:{" "}
+                  <span className="font-mono text-(--text-secondary)">
+                    {lastEvaluation.contextRaw}
+                  </span>
+                </p>
+                <p>
+                  Result: {lastEvaluation.result.enabled ? "Enabled" : "Disabled"} for{" "}
+                  <span className="font-mono text-(--text-secondary)">
+                    {lastEvaluation.flagName}
+                  </span>
+                </p>
+                <p>
+                  Bucket {lastEvaluation.result.persistedBucket} compared to rollout{" "}
+                  {lastEvaluation.rolloutPct}%
+                  {lastEvaluation.result.rule_matched
+                    ? `, with rule ${lastEvaluation.result.rule_matched} matched.`
+                    : "."}
+                </p>
+              </div>
+            ) : null}
+          </div>
         </section>
       </div>
 
-      <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
+      <section className="rounded-xl p-5 app-card">
         <h2 className="mb-2 text-sm font-semibold text-(--text-primary)">Product preview</h2>
         <p className="text-xs text-(--text-secondary)">
           Feature flags let teams ship code separately from releasing features. This preview
@@ -863,12 +865,12 @@ export function FlagsControlCenter() {
         )}
       </section>
 
-      <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
+      <section id="flag-list" className="rounded-xl p-5 app-card">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-(--text-primary)">Persisted flags</h2>
           <button
             onClick={() => void loadFlags()}
-            className="rounded border border-(--border-default) px-3 py-1 text-xs text-(--text-secondary) hover:text-(--text-primary)"
+            className="rounded px-3 py-1 text-xs app-button-secondary"
           >
             {schemaUnavailable ? "Retry" : "Refresh"}
           </button>
@@ -944,7 +946,7 @@ export function FlagsControlCenter() {
                               }))
                             }
                             placeholder="Describe what this flag controls"
-                            className="w-full rounded border border-(--border-default) bg-(--surface-base) px-2 py-1.5 text-xs text-(--text-primary)"
+                            className="w-full rounded px-2 py-1.5 text-xs app-input"
                           />
                           <button
                             onClick={() =>
@@ -955,7 +957,7 @@ export function FlagsControlCenter() {
                               })
                             }
                             disabled={saving[flag.id] || schemaUnavailable || !hasDescriptionChanges}
-                            className="w-full rounded border border-(--border-default) px-2 py-1 text-xs text-(--text-secondary) hover:text-(--text-primary) disabled:opacity-50 sm:w-auto"
+                            className="w-full rounded px-2 py-1 text-xs app-button-secondary disabled:opacity-50 sm:w-auto"
                           >
                             Save description
                           </button>
@@ -1007,7 +1009,7 @@ export function FlagsControlCenter() {
                         disabled={
                           saving[flag.id] || schemaUnavailable || draftRollout === flag.rollout_pct
                         }
-                        className="w-full rounded border border-(--border-default) px-2 py-1 text-xs text-(--text-secondary) hover:text-(--text-primary) sm:w-auto"
+                        className="w-full rounded px-2 py-1 text-xs app-button-secondary sm:w-auto"
                       >
                         Save
                       </button>
@@ -1023,7 +1025,7 @@ export function FlagsControlCenter() {
                     <button
                       onClick={() => void evaluateFlagForSubject(flag.id)}
                       disabled={evaluating[flag.id] || !subjectKey.trim() || schemaUnavailable}
-                      className="w-full rounded border border-(--border-default) px-2 py-1 text-xs text-(--text-secondary) hover:text-(--text-primary) disabled:opacity-50 sm:w-auto"
+                      className="w-full rounded px-2 py-1 text-xs app-button-secondary disabled:opacity-50 sm:w-auto"
                     >
                       {evaluating[flag.id] ? "Evaluating…" : "Evaluate subject"}
                     </button>
@@ -1034,7 +1036,7 @@ export function FlagsControlCenter() {
                       <Dialog.Trigger asChild>
                         <button
                           type="button"
-                          className="w-full rounded border border-red-400/40 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10 sm:w-auto"
+                          className="w-full rounded border border-red-400/40 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10 sm:w-auto transition-colors"
                         >
                           Archive
                         </button>
@@ -1053,7 +1055,7 @@ export function FlagsControlCenter() {
                             <Dialog.Close asChild>
                               <button
                                 type="button"
-                                className="rounded border border-(--border-default) px-2 py-1 text-xs text-(--text-secondary)"
+                                className="rounded px-2 py-1 text-xs app-button-secondary"
                               >
                                 Cancel
                               </button>
