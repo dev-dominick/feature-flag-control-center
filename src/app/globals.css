@@ -3,31 +3,34 @@
 :root {
   color-scheme: dark;
 
-  --surface-base: #0a0c10;
-  --surface-raised: #11151d;
-  --surface-overlay: #171d28;
-  --surface-input: #0f141c;
+  --surface-base: #071018;
+  --surface-raised: #101924;
+  --surface-overlay: #162131;
+  --surface-input: #0e1725;
+  --surface-glass: rgba(15, 23, 32, 0.78);
 
-  --border-subtle: #1f2733;
-  --border-default: #2d3748;
-  --border-strong: #3b4658;
+  --border-subtle: rgba(148, 163, 184, 0.18);
+  --border-default: rgba(148, 163, 184, 0.3);
+  --border-strong: rgba(148, 163, 184, 0.45);
 
-  --text-primary: #f8fafc;
+  --text-primary: #e2e8f0;
   --text-secondary: #c4cedd;
   --text-muted: #94a3b8;
 
   --accent: #60a5fa;
   --accent-hover: #3b82f6;
   --accent-active: #2563eb;
-  --accent-muted: rgba(59, 130, 246, 0.18);
+  --accent-muted: rgba(96, 165, 250, 0.18);
   --tone-blue: #60a5fa;
+  --tone-violet: #8b5cf6;
 
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
 
-  --shadow-md: 0 10px 28px rgba(2, 6, 23, 0.45);
-  --shadow-lg: 0 18px 38px rgba(2, 6, 23, 0.55);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.25);
+  --shadow-md: 0 12px 28px rgba(2, 6, 23, 0.38);
+  --shadow-lg: 0 22px 48px rgba(2, 6, 23, 0.52);
 }
 
 @theme inline {
@@ -38,24 +41,32 @@
 html {
   background: var(--surface-base);
   color: var(--text-primary);
+  scroll-behavior: smooth;
 }
 
 body {
-  min-height: 100%;
+  min-height: 100vh;
   background:
-    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.14), transparent 36%),
-    radial-gradient(circle at 100% 0%, rgba(14, 116, 144, 0.12), transparent 33%),
-    var(--surface-base);
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(139, 92, 246, 0.12), transparent 26%),
+    linear-gradient(180deg, #071018 0%, #0d1724 100%);
   color: var(--text-secondary);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+p {
+  line-height: 1.6;
 }
 
 :where(a, button, input, textarea, select, [role="button"]):focus-visible {
@@ -66,22 +77,86 @@ h3 {
 }
 
 .app-shell {
+  position: relative;
   border: 1px solid var(--border-subtle);
-  background: linear-gradient(180deg, rgba(23, 29, 40, 0.86), rgba(17, 21, 29, 0.92));
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(15, 23, 32, 0.88), rgba(11, 18, 28, 0.96));
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(10px);
 }
 
-.app-card {
+.app-card,
+.app-panel {
   border: 1px solid var(--border-subtle);
-  background: linear-gradient(180deg, rgba(17, 21, 29, 0.95), rgba(15, 20, 28, 0.98));
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(16, 25, 36, 0.95), rgba(12, 19, 29, 0.98));
   box-shadow: var(--shadow-md);
+}
+
+.app-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.app-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.45), transparent);
+}
+
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.68rem;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.section-kicker::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--accent), var(--tone-violet));
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.08);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 32, 0.6);
+  padding: 0.45rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.status-pill--primary {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.12);
+  color: #dceafe;
 }
 
 .app-input {
   border: 1px solid var(--border-default);
-  background: var(--surface-input);
+  border-radius: 12px;
+  background: rgba(14, 23, 37, 0.9);
   color: var(--text-primary);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .app-input::placeholder {
@@ -93,27 +168,56 @@ h3 {
 }
 
 .app-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-muted);
+  border-color: rgba(96, 165, 250, 0.8);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
 }
 
 .app-button-primary {
-  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border: 1px solid rgba(96, 165, 250, 0.5);
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.24), rgba(59, 130, 246, 0.14));
   color: #dbeafe;
+  box-shadow: 0 8px 18px rgba(59, 130, 246, 0.12);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
 }
 
 .app-button-primary:hover {
-  background: color-mix(in srgb, var(--accent-hover) 28%, transparent);
+  border-color: rgba(96, 165, 250, 0.72);
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.3), rgba(59, 130, 246, 0.18));
+}
+
+.app-button-primary:active {
+  transform: translateY(1px);
 }
 
 .app-button-secondary {
   border: 1px solid var(--border-default);
-  background: var(--surface-overlay);
+  background: rgba(20, 30, 42, 0.92);
   color: var(--text-secondary);
+  transition:
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    background 180ms ease;
 }
 
 .app-button-secondary:hover {
   border-color: var(--border-strong);
   color: var(--text-primary);
+  background: rgba(24, 35, 49, 0.98);
+}
+
+.app-button-secondary:active {
+  transform: translateY(1px);
+}
+
+.app-input,
+.app-button-primary,
+.app-button-secondary,
+button,
+input,
+a {
+  transition-duration: 180ms;
 }

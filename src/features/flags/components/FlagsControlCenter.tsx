@@ -581,15 +581,20 @@ export function FlagsControlCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-(--border-subtle) bg-(--surface-overlay)/70 p-4">
-        <h1 className="text-2xl font-semibold text-(--text-primary) sm:text-3xl">
-          Feature Flag Control Center
-        </h1>
-        <p className="mt-2 text-sm text-(--text-secondary)">
+      <div className="app-panel p-4 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="section-kicker">Operations overview</p>
+            <h1 className="text-2xl font-semibold text-(--text-primary) sm:text-3xl">
+              Feature Flag Control Center
+            </h1>
+          </div>
+          <span className="status-pill status-pill--primary">
+            Full-stack mode: {enabledCount}/{flags.length} enabled
+          </span>
+        </div>
+        <p className="mt-3 max-w-3xl text-sm text-(--text-secondary)">
           Deterministic rollout evaluation backed by persisted PostgreSQL flag rules.
-        </p>
-        <p className="mt-3 inline-flex items-center rounded border border-(--accent)/30 bg-(--accent)/10 px-2.5 py-1 text-[11px] font-medium text-(--accent)">
-          Full-stack mode: {enabledCount}/{flags.length} enabled
         </p>
       </div>
       {schemaUnavailable && (
@@ -619,7 +624,8 @@ export function FlagsControlCenter() {
       )}
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <section id="flag-create" className="rounded-xl p-5 app-card">
+        <section id="flag-create" className="app-card p-5">
+          <p className="section-kicker">Create</p>
           <h2 className="mb-3 text-sm font-semibold text-(--text-primary)">Create flag</h2>
           <form onSubmit={createNewFlag} className="space-y-3">
             <div>
@@ -636,7 +642,7 @@ export function FlagsControlCenter() {
                 placeholder="flag_example"
                 aria-invalid={Boolean(createFieldErrors.name)}
                 aria-describedby={createFieldErrors.name ? "flag-key-error" : undefined}
-                className="w-full rounded px-3 py-2 text-sm app-input"
+                className="w-full px-3 py-2.5 text-sm app-input"
                 required
               />
             </div>
@@ -656,13 +662,13 @@ export function FlagsControlCenter() {
                 aria-describedby={
                   createFieldErrors.description ? "flag-description-error" : undefined
                 }
-                className="w-full rounded px-3 py-2 text-sm app-input"
+                className="w-full px-3 py-2.5 text-sm app-input"
               />
             </div>
             <button
               type="submit"
               disabled={creating || schemaUnavailable}
-              className="rounded px-3 py-2 text-sm font-medium app-button-primary disabled:opacity-50"
+              className="w-full rounded-xl px-3 py-2.5 text-sm font-medium app-button-primary disabled:opacity-50 sm:w-auto"
             >
               {creating ? "Creating…" : "Create"}
             </button>
@@ -681,40 +687,41 @@ export function FlagsControlCenter() {
           </div>
         </section>
 
-        <section id="flag-evaluate" className="rounded-xl p-5 app-card">
+        <section id="flag-evaluate" className="app-card p-5">
+          <p className="section-kicker">Evaluate</p>
           <h2 className="mb-3 text-sm font-semibold text-(--text-primary)">Evaluation context</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-            <label
-              htmlFor="flag-subject-key"
-              className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
-            >
-              Subject key
-            </label>
-            <input
-              id="flag-subject-key"
-              value={subjectKey}
-              onChange={(e) => setSubjectKey(e.target.value)}
-              placeholder="user_123"
-              className="w-full rounded px-3 py-2 text-sm app-input"
-            />
+              <label
+                htmlFor="flag-subject-key"
+                className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
+              >
+                Subject key
+              </label>
+              <input
+                id="flag-subject-key"
+                value={subjectKey}
+                onChange={(e) => setSubjectKey(e.target.value)}
+                placeholder="user_123"
+                className="w-full px-3 py-2.5 text-sm app-input"
+              />
             </div>
             <div>
-            <label
-              htmlFor="flag-context"
-              className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
-            >
-              Context (JSON)
-            </label>
-            <input
-              id="flag-context"
-              value={evaluationContext}
-              onChange={(e) => setEvaluationContext(e.target.value)}
-              placeholder='{"tier":"pro"}'
-              aria-invalid={Boolean(evaluationFieldError)}
-              aria-describedby={evaluationFieldError ? "evaluation-context-error" : undefined}
-              className="w-full rounded px-3 py-2 text-xs font-mono app-input"
-            />
+              <label
+                htmlFor="flag-context"
+                className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
+              >
+                Context (JSON)
+              </label>
+              <input
+                id="flag-context"
+                value={evaluationContext}
+                onChange={(e) => setEvaluationContext(e.target.value)}
+                placeholder='{"tier":"pro"}'
+                aria-invalid={Boolean(evaluationFieldError)}
+                aria-describedby={evaluationFieldError ? "evaluation-context-error" : undefined}
+                className="w-full px-3 py-2.5 text-xs font-mono app-input"
+              />
             </div>
           </div>
           {evaluationFieldError && (
@@ -722,14 +729,14 @@ export function FlagsControlCenter() {
               {evaluationFieldError}
             </p>
           )}
-          <div className="mt-3 rounded border border-(--border-subtle) bg-(--surface-base) p-3 text-xs text-(--text-secondary) space-y-1">
+          <div className="mt-3 rounded-xl border border-(--border-subtle) bg-(--surface-base)/80 p-3 text-xs text-(--text-secondary) space-y-1.5">
             <p className="font-medium text-(--text-primary)">Deterministic rollout behavior</p>
             <p>
               For the same flag and subject key, the bucket stays stable. The result changes only if
               rollout percentage, rules, or enabled state changes.
             </p>
             {lastEvaluation ? (
-              <div className="rounded border border-(--border-subtle) bg-(--surface-overlay)/60 p-2 text-(--text-muted) space-y-1">
+              <div className="rounded-lg border border-(--border-subtle) bg-(--surface-overlay)/70 p-2.5 text-(--text-muted) space-y-1">
                 <p>
                   Subject:{" "}
                   <span className="font-mono text-(--text-secondary)">
