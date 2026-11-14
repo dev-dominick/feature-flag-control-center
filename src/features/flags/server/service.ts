@@ -29,9 +29,15 @@ export const updateFlagSchema = z.object({
   rules: z.array(ruleSchema).optional(),
 });
 
+const scalarContextValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+]);
+
 export const evaluateFlagSchema = z.object({
   subjectKey: z.string().trim().min(1).max(300),
-  context: z.record(z.string(), z.string()).optional().default({}),
+  context: z.record(z.string(), scalarContextValueSchema).optional().default({}),
 });
 
 export async function listFlags(): Promise<FeatureFlag[]> {

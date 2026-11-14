@@ -14,7 +14,7 @@ import type { EvaluationResult, FeatureFlag, Rule } from "./types";
 export function evaluateFlag(
   flag: FeatureFlag,
   fingerprint: string,
-  context: Record<string, string> = {},
+  context: Record<string, unknown> = {},
 ): EvaluationResult {
   if (!flag.enabled) {
     return { enabled: false, bucket: null, rule_matched: null };

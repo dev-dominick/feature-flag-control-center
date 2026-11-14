@@ -489,7 +489,7 @@ export function FlagsControlCenter() {
       setEvaluating((prev) => ({ ...prev, [flagId]: false }));
       return;
     }
-    const context = parsedEvaluationContext.context as Record<string, string>;
+    const context = toStringContext(parsedEvaluationContext.context);
 
     try {
       const res = await fetch(`/api/projects/flags/${flagId}/evaluate`, {

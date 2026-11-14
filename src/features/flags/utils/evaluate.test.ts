@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { evaluateFlagSchema } from "../server/service";
 import { evaluateFlag } from "./evaluate";
 import type { FeatureFlag } from "./types";
 
@@ -48,5 +49,37 @@ describe("evaluateFlag", () => {
     expect(first.bucket).not.toBeNull();
     expect(first.bucket).toBe(second.bucket);
     expect(first.enabled).toBe(second.enabled);
+  });
+
+  it("coerces numeric and boolean context values before rule matching", () => {
+    const numericResult = evaluateFlag(
+      makeFlag({
+        rules: [{ attribute: "plan_id", operator: "eq", value: "42" }],
+      }),
+      "user-99",
+      { plan_id: 42 },
+    );
+
+    const boolResult = evaluateFlag(
+      makeFlag({
+        rules: [{ attribute: "beta", operator: "eq", value: "true" }],
+      }),
+      "user-100",
+      { beta: true },
+    );
+
+    expect(numericResult.enabled).toBe(true);
+    expect(numericResult.rule_matched).toBe("plan_id");
+    expect(boolResult.enabled).toBe(true);
+    expect(boolResult.rule_matched).toBe("beta");
+  });
+
+  it("accepts numeric and boolean values in the evaluation request schema", () => {
+    const parsed = evaluateFlagSchema.safeParse({
+      subjectKey: "user-101",
+      context: { plan_id: 42, beta: true },
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });
