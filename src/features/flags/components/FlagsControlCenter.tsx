@@ -177,12 +177,14 @@ function parseContextInput(raw: string): {
   }
 }
 
-function toStringContext(context: Record<string, unknown>): Record<string, string> {
+function toScalarContext(
+  context: Record<string, unknown>,
+): Record<string, string | number | boolean> {
   return Object.fromEntries(
-    Object.entries(context)
-      .filter(([, value]) => ["string", "number", "boolean"].includes(typeof value))
-      .map(([key, value]) => [key, String(value)]),
-  );
+    Object.entries(context).filter(([, value]) =>
+      ["string", "number", "boolean"].includes(typeof value),
+    ),
+  ) as Record<string, string | number | boolean>;
 }
 
 function evaluationSummary(
@@ -230,6 +232,8 @@ export function FlagsControlCenter() {
   const [evaluations, setEvaluations] = useState<Record<string, EvaluationResult>>({});
   const [evaluationFieldError, setEvaluationFieldError] = useState<string | null>(null);
   const [lastEvaluation, setLastEvaluation] = useState<LastEvaluation | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [descriptionDraft, setDescriptionDraft] = useState<Record<string, string>>({});
 
   const enabledCount = useMemo(() => flags.filter((flag) => flag.enabled).length, [flags]);
   const sortedFlags = useMemo(() => sortFlagsByCreatedAndId(flags), [flags]);
@@ -271,7 +275,7 @@ export function FlagsControlCenter() {
       };
     }
 
-    const context = toStringContext(parsedEvaluationContext.context);
+    const context = toScalarContext(parsedEvaluationContext.context);
     const features: Record<string, PreviewFeatureState> = {};
 
     for (const flag of sortedFlags) {
@@ -307,7 +311,17 @@ export function FlagsControlCenter() {
       }
 
       const data = (await res.json()) as { flags: FlagRow[] };
-      setFlags(data.flags.map(normalizeFlag));
+      const normalized = data.flags.map(normalizeFlag);
+      setFlags(normalized);
+      setDescriptionDraft((prev) => {
+        const next: Record<string, string> = {};
+        for (const flag of normalized) {
+          if (Object.prototype.hasOwnProperty.call(prev, flag.id)) {
+            next[flag.id] = prev[flag.id] ?? "";
+          }
+        }
+        return next;
+      });
       setSchemaUnavailable(false);
       setError(null);
     } catch {
@@ -354,6 +368,7 @@ export function FlagsControlCenter() {
     e.preventDefault();
     setCreating(true);
     setError(null);
+    setFeedback(null);
     setCreateFieldErrors({});
 
     try {
@@ -384,6 +399,7 @@ export function FlagsControlCenter() {
       setName("");
       setDescription("");
       setCreateFieldErrors({});
+      setFeedback(`Created flag ${name.trim()}.`);
       await loadFlags();
     } catch {
       setError("We could not create this flag. Please try again.");
@@ -399,6 +415,7 @@ export function FlagsControlCenter() {
     const previous = setFlagOptimistic(id, patch);
     setSaving((prev) => ({ ...prev, [id]: true }));
     setError(null);
+    setFeedback(null);
     setRowFieldErrors((prev) => ({ ...prev, [id]: {} }));
 
     try {
@@ -445,6 +462,22 @@ export function FlagsControlCenter() {
           return next;
         });
       }
+      if (patch.description !== undefined) {
+        setDescriptionDraft((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }
+      const updatedFlag = flags.find((item) => item.id === id);
+      const label = updatedFlag?.name ?? "flag";
+      if (patch.enabled !== undefined) {
+        setFeedback(`${patch.enabled ? "Enabled" : "Disabled"} ${label}.`);
+      } else if (patch.rollout_pct !== undefined) {
+        setFeedback(`Saved rollout at ${patch.rollout_pct}% for ${label}.`);
+      } else if (patch.description !== undefined) {
+        setFeedback(`Updated description for ${label}.`);
+      }
     } catch {
       restoreFlag(id, previous);
       setError("We could not save this flag update. Please try again.");
@@ -456,6 +489,7 @@ export function FlagsControlCenter() {
   async function archiveFlag(id: string) {
     setArchiving((prev) => ({ ...prev, [id]: true }));
     setError(null);
+    setFeedback(null);
 
     try {
       const res = await fetch(`/api/projects/flags/${id}`, {
@@ -470,6 +504,10 @@ export function FlagsControlCenter() {
       }
 
       setArchiveDialogFlagId(null);
+      const archivedFlag = flags.find((item) => item.id === id);
+      if (archivedFlag) {
+        setFeedback(`Archived ${archivedFlag.name}.`);
+      }
       await loadFlags();
     } catch {
       setError("We could not archive this flag. Please try again.");
@@ -481,6 +519,7 @@ export function FlagsControlCenter() {
   async function evaluateFlagForSubject(flagId: string) {
     setEvaluating((prev) => ({ ...prev, [flagId]: true }));
     setError(null);
+    setFeedback(null);
     setEvaluationFieldError(null);
 
     if (parsedEvaluationContext.error) {
@@ -489,13 +528,22 @@ export function FlagsControlCenter() {
       setEvaluating((prev) => ({ ...prev, [flagId]: false }));
       return;
     }
-    const context = toStringContext(parsedEvaluationContext.context);
+    const trimmedSubject = subjectKey.trim();
+    if (!trimmedSubject) {
+      const message = "Subject key is required.";
+      setError(message);
+      setEvaluationFieldError(message);
+      setEvaluating((prev) => ({ ...prev, [flagId]: false }));
+      return;
+    }
+
+    const context = toScalarContext(parsedEvaluationContext.context);
 
     try {
       const res = await fetch(`/api/projects/flags/${flagId}/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subjectKey, context }),
+        body: JSON.stringify({ subjectKey: trimmedSubject, context }),
       });
 
       if (!res.ok) {
@@ -517,11 +565,12 @@ export function FlagsControlCenter() {
       if (flag) {
         setLastEvaluation({
           flagName: flag.name,
-          subjectKey: subjectKey.trim(),
+          subjectKey: trimmedSubject,
           contextRaw: evaluationContext,
           result: evaluation,
           rolloutPct: flag.rollout_pct,
         });
+        setFeedback(`Evaluated ${flag.name} for ${trimmedSubject}.`);
       }
     } catch {
       setError("We could not run this evaluation. Please try again.");
@@ -560,71 +609,80 @@ export function FlagsControlCenter() {
           Could not complete the last request. {error}
         </div>
       )}
-
-      <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
-        <h2 className="mb-3 text-sm font-semibold text-(--text-primary)">Create flag</h2>
-        <form onSubmit={createNewFlag} className="space-y-3">
-          <div>
-            <label
-              htmlFor="flag-key-input"
-              className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
-            >
-              Flag key
-            </label>
-            <input
-              id="flag-key-input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="flag_example"
-              aria-invalid={Boolean(createFieldErrors.name)}
-              aria-describedby={createFieldErrors.name ? "flag-key-error" : undefined}
-              className="w-full rounded border border-(--border-default) bg-(--surface-base) px-3 py-2 text-sm text-(--text-primary)"
-              required
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="flag-description-input"
-              className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
-            >
-              Description
-            </label>
-            <input
-              id="flag-description-input"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What this flag controls"
-              aria-invalid={Boolean(createFieldErrors.description)}
-              aria-describedby={
-                createFieldErrors.description ? "flag-description-error" : undefined
-              }
-              className="w-full rounded border border-(--border-default) bg-(--surface-base) px-3 py-2 text-sm text-(--text-primary)"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={creating || schemaUnavailable}
-            className="rounded border border-(--border-default) bg-(--nebula-muted) px-3 py-2 text-sm font-medium text-(--nebula) disabled:opacity-50"
-          >
-            {creating ? "Creating…" : "Create"}
-          </button>
-        </form>
-        <div className="mt-2 space-y-1">
-          {createFieldErrors.name && (
-            <p id="flag-key-error" className="text-xs text-red-300">
-              {createFieldErrors.name}
-            </p>
-          )}
-          {createFieldErrors.description && (
-            <p id="flag-description-error" className="text-xs text-red-300">
-              {createFieldErrors.description}
-            </p>
-          )}
+      {feedback && (
+        <div
+          aria-live="polite"
+          className="rounded border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200"
+        >
+          {feedback}
         </div>
-      </section>
+      )}
 
-      <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
-        <h2 className="mb-3 text-sm font-semibold text-(--text-primary)">Evaluation context</h2>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
+          <h2 className="mb-3 text-sm font-semibold text-(--text-primary)">Create flag</h2>
+          <form onSubmit={createNewFlag} className="space-y-3">
+            <div>
+              <label
+                htmlFor="flag-key-input"
+                className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
+              >
+                Flag key
+              </label>
+              <input
+                id="flag-key-input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="flag_example"
+                aria-invalid={Boolean(createFieldErrors.name)}
+                aria-describedby={createFieldErrors.name ? "flag-key-error" : undefined}
+                className="w-full rounded border border-(--border-default) bg-(--surface-base) px-3 py-2 text-sm text-(--text-primary)"
+                required
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="flag-description-input"
+                className="mb-1.5 block text-[11px] font-medium text-(--text-muted) uppercase tracking-[0.16em]"
+              >
+                Description
+              </label>
+              <input
+                id="flag-description-input"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What this flag controls"
+                aria-invalid={Boolean(createFieldErrors.description)}
+                aria-describedby={
+                  createFieldErrors.description ? "flag-description-error" : undefined
+                }
+                className="w-full rounded border border-(--border-default) bg-(--surface-base) px-3 py-2 text-sm text-(--text-primary)"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={creating || schemaUnavailable}
+              className="rounded border border-(--border-default) bg-(--nebula-muted) px-3 py-2 text-sm font-medium text-(--nebula) disabled:opacity-50"
+            >
+              {creating ? "Creating…" : "Create"}
+            </button>
+          </form>
+          <div className="mt-2 space-y-1">
+            {createFieldErrors.name && (
+              <p id="flag-key-error" className="text-xs text-red-300">
+                {createFieldErrors.name}
+              </p>
+            )}
+            {createFieldErrors.description && (
+              <p id="flag-description-error" className="text-xs text-red-300">
+                {createFieldErrors.description}
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
+          <h2 className="mb-3 text-sm font-semibold text-(--text-primary)">Evaluation context</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label
@@ -698,7 +756,8 @@ export function FlagsControlCenter() {
             </div>
           ) : null}
         </div>
-      </section>
+        </section>
+      </div>
 
       <section className="rounded border border-(--border-subtle) bg-(--surface-raised) p-4">
         <h2 className="mb-2 text-sm font-semibold text-(--text-primary)">Product preview</h2>
@@ -832,6 +891,10 @@ export function FlagsControlCenter() {
           <div className="space-y-2">
             {sortedFlags.map((flag) => {
               const draftRollout = rolloutDraft[flag.id] ?? flag.rollout_pct;
+              const draftDescription = descriptionDraft[flag.id] ?? (flag.description ?? "");
+              const trimmedDraftDescription = draftDescription.trim();
+              const persistedDescription = flag.description ?? "";
+              const hasDescriptionChanges = trimmedDraftDescription !== persistedDescription.trim();
               const result = evaluations[flag.id];
 
               return (
@@ -857,12 +920,50 @@ export function FlagsControlCenter() {
                         <span className="rounded border border-(--border-subtle) px-1.5 py-0.5 text-(--text-muted)">
                           Updated {formatUpdatedAt(flag.updated_at)}
                         </span>
+                        {draftRollout !== flag.rollout_pct && (
+                          <span className="rounded border border-amber-400/40 px-1.5 py-0.5 text-amber-200">
+                            Unsaved rollout
+                          </span>
+                        )}
                       </div>
-                      {flag.description && (
-                        <p className="mt-1 text-xs text-(--text-muted) wrap-break-word">
-                          {flag.description}
-                        </p>
-                      )}
+                      <div className="mt-2 space-y-1.5">
+                        <label
+                          htmlFor={`description-${flag.id}`}
+                          className="text-[11px] text-(--text-muted)"
+                        >
+                          Description
+                        </label>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <input
+                            id={`description-${flag.id}`}
+                            value={draftDescription}
+                            onChange={(e) =>
+                              setDescriptionDraft((prev) => ({
+                                ...prev,
+                                [flag.id]: e.target.value,
+                              }))
+                            }
+                            placeholder="Describe what this flag controls"
+                            className="w-full rounded border border-(--border-default) bg-(--surface-base) px-2 py-1.5 text-xs text-(--text-primary)"
+                          />
+                          <button
+                            onClick={() =>
+                              void updateFlag(flag.id, {
+                                description: trimmedDraftDescription.length
+                                  ? trimmedDraftDescription
+                                  : null,
+                              })
+                            }
+                            disabled={saving[flag.id] || schemaUnavailable || !hasDescriptionChanges}
+                            className="w-full rounded border border-(--border-default) px-2 py-1 text-xs text-(--text-secondary) hover:text-(--text-primary) disabled:opacity-50 sm:w-auto"
+                          >
+                            Save description
+                          </button>
+                        </div>
+                        {rowFieldErrors[flag.id]?.description && (
+                          <p className="text-xs text-red-300">{rowFieldErrors[flag.id]?.description}</p>
+                        )}
+                      </div>
                     </div>
                     <button
                       role="switch"
@@ -903,7 +1004,9 @@ export function FlagsControlCenter() {
                       />
                       <button
                         onClick={() => void updateFlag(flag.id, { rollout_pct: draftRollout })}
-                        disabled={saving[flag.id] || schemaUnavailable}
+                        disabled={
+                          saving[flag.id] || schemaUnavailable || draftRollout === flag.rollout_pct
+                        }
                         className="w-full rounded border border-(--border-default) px-2 py-1 text-xs text-(--text-secondary) hover:text-(--text-primary) sm:w-auto"
                       >
                         Save

@@ -218,6 +218,56 @@ describe("FlagsControlCenter", () => {
     expect(screen.getByText(/deterministic rollout behavior/i)).toBeInTheDocument();
   });
 
+  it("sends numeric and boolean context values as scalars during evaluation", async () => {
+    let evaluationPayload:
+      | { subjectKey: string; context: Record<string, string | number | boolean> }
+      | undefined;
+
+    fetchMock.mockImplementation(async (input, init) => {
+      const { url, method, body } = resolveFetchCall(input, init);
+
+      if (url.endsWith("/api/projects/flags") && method === "GET") {
+        return createJsonResponse({
+          flags: [flagRow("flag-ctx", "checkout_v2", { enabled: true, rollout_pct: 100 })],
+        });
+      }
+
+      if (url.includes("/api/projects/flags/flag-ctx/evaluate") && method === "POST") {
+        evaluationPayload = JSON.parse(body || "{}") as {
+          subjectKey: string;
+          context: Record<string, string | number | boolean>;
+        };
+        return createJsonResponse({
+          evaluation: {
+            enabled: true,
+            bucket: 3,
+            rule_matched: null,
+            persistedBucket: 3,
+          },
+        });
+      }
+
+      return createJsonResponse({ flags: [] }, 404);
+    });
+
+    render(<FlagsControlCenter />);
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: "Disable checkout_v2" })).toBeInTheDocument(),
+    );
+
+    fireEvent.change(screen.getByLabelText("Context (JSON)"), {
+      target: { value: '{"tier":"pro","plan_id":42,"beta":true}' },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Evaluate subject" }));
+
+    await waitFor(() => expect(evaluationPayload).toBeDefined());
+    expect(evaluationPayload?.context).toEqual({
+      tier: "pro",
+      plan_id: 42,
+      beta: true,
+    });
+  });
+
   it("keeps card order stable after toggle update and refetch", async () => {
     const sameCreatedAt = new Date("2026-01-01T12:00:00.000Z").toISOString();
     let alphaEnabled = false;
@@ -347,6 +397,50 @@ describe("FlagsControlCenter", () => {
       if (url.endsWith("/api/projects/flags") && method === "GET") {
         return createJsonResponse({
           flags: [flagRow("team-1", "team_dashboard", { enabled, rollout_pct: 100 })],
+        });
+
+        it("saves per-flag description edits", async () => {
+          let patchedDescription: string | null | undefined;
+
+          fetchMock.mockImplementation(async (input, init) => {
+            const { url, method, body } = resolveFetchCall(input, init);
+
+            if (url.endsWith("/api/projects/flags") && method === "GET") {
+              return createJsonResponse({
+                flags: [
+                  flagRow("desc-1", "checkout_v2", {
+                    enabled: true,
+                    rollout_pct: 100,
+                    description: "Initial description",
+                  }),
+                ],
+              });
+            }
+
+            if (url.endsWith("/api/projects/flags/desc-1") && method === "PATCH") {
+              const payload = JSON.parse(body || "{}") as { description?: string | null };
+              patchedDescription = payload.description;
+              return createJsonResponse({
+                flag: flagRow("desc-1", "checkout_v2", {
+                  enabled: true,
+                  rollout_pct: 100,
+                  description: payload.description ?? "",
+                }),
+              });
+            }
+
+            return createJsonResponse({ flags: [] }, 404);
+          });
+
+          render(<FlagsControlCenter />);
+          await waitFor(() => expect(screen.getByText("checkout_v2")).toBeInTheDocument());
+
+          const descriptionInput = document.getElementById("description-desc-1") as HTMLInputElement;
+          expect(descriptionInput).toBeTruthy();
+          fireEvent.change(descriptionInput, { target: { value: "Updated description text" } });
+          fireEvent.click(screen.getByRole("button", { name: "Save description" }));
+
+          await waitFor(() => expect(patchedDescription).toBe("Updated description text"));
         });
       }
 

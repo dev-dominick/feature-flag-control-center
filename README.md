@@ -8,7 +8,9 @@ A standalone feature-flag system built with Next.js, React, TypeScript, and Post
 - Percentage-based rollouts
 - Rule-based targeting
 - Enable / disable controls
+- Inline description editing
 - Evaluation previews
+- Scalar evaluation context support (`string`, `number`, `boolean`)
 - PostgreSQL-backed flag configuration
 - Persisted evaluation history
 - Zod validation
