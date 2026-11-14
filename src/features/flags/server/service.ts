@@ -52,6 +52,17 @@ export async function listFlags(): Promise<FeatureFlag[]> {
   return rows as unknown as FeatureFlag[];
 }
 
+export async function countActiveFlagsBySource(source: string): Promise<number> {
+  const sql = getDb();
+  const [row] = await sql`
+    SELECT COUNT(*)::int AS count
+    FROM feature_flags
+    WHERE archived_at IS NULL
+      AND source = ${source}
+  `;
+  return Number((row as { count?: number } | undefined)?.count ?? 0);
+}
+
 export async function createFlag(
   input: z.infer<typeof createFlagSchema>,
   source?: string | null,

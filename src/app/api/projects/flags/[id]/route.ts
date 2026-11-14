@@ -9,8 +9,26 @@ import {
   updateFlagSchema,
 } from "@/features/flags/server";
 import { createApiErrorBody } from "@/lib/http/api-error";
+import { consumeRateLimit } from "@/lib/http/rate-limit";
 
 const idSchema = z.string().uuid();
+const PUBLIC_DEMO_SOURCE = "public_demo";
+
+function firstClientIp(request: Request): string {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const first = forwardedFor.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+function isAdminRequest(request: Request): boolean {
+  const configuredToken = process.env.FFCC_ADMIN_TOKEN?.trim();
+  const providedToken = request.headers.get("x-ffcc-admin-token")?.trim();
+  if (!configuredToken || !providedToken) return false;
+  return providedToken === configuredToken;
+}
 
 function invalidId(requestId: string) {
   return NextResponse.json(
@@ -87,6 +105,52 @@ export async function PATCH(
   }
 
   try {
+    if (!isAdminRequest(request)) {
+      const rate = consumeRateLimit(
+        `flags:patch:${firstClientIp(request)}`,
+        30,
+        5 * 60 * 1000,
+      );
+      if (!rate.allowed) {
+        return NextResponse.json(
+          createApiErrorBody({
+            code: "RATE_LIMITED",
+            message: "Too many update requests. Please retry later.",
+            requestId,
+          }),
+          {
+            status: 429,
+            headers: {
+              "retry-after": String(rate.retryAfterSeconds),
+              "x-request-id": requestId,
+            },
+          },
+        );
+      }
+    }
+
+    const existing = await getFlagById(id);
+    if (!existing) {
+      return NextResponse.json(
+        createApiErrorBody({
+          code: "NOT_FOUND",
+          message: "Flag not found",
+          requestId,
+        }),
+        { status: 404, headers: { "x-request-id": requestId } },
+      );
+    }
+    if (!isAdminRequest(request) && existing.source !== PUBLIC_DEMO_SOURCE) {
+      return NextResponse.json(
+        createApiErrorBody({
+          code: "FORBIDDEN",
+          message: "Only demo-scoped flags are mutable in public mode.",
+          requestId,
+        }),
+        { status: 403, headers: { "x-request-id": requestId } },
+      );
+    }
+
     const body = await request.json().catch(() => null);
     const parsed = updateFlagSchema.safeParse(body);
 
@@ -155,6 +219,52 @@ export async function DELETE(
   }
 
   try {
+    if (!isAdminRequest(request)) {
+      const rate = consumeRateLimit(
+        `flags:delete:${firstClientIp(request)}`,
+        12,
+        5 * 60 * 1000,
+      );
+      if (!rate.allowed) {
+        return NextResponse.json(
+          createApiErrorBody({
+            code: "RATE_LIMITED",
+            message: "Too many archive requests. Please retry later.",
+            requestId,
+          }),
+          {
+            status: 429,
+            headers: {
+              "retry-after": String(rate.retryAfterSeconds),
+              "x-request-id": requestId,
+            },
+          },
+        );
+      }
+    }
+
+    const existing = await getFlagById(id);
+    if (!existing) {
+      return NextResponse.json(
+        createApiErrorBody({
+          code: "NOT_FOUND",
+          message: "Flag not found",
+          requestId,
+        }),
+        { status: 404, headers: { "x-request-id": requestId } },
+      );
+    }
+    if (!isAdminRequest(request) && existing.source !== PUBLIC_DEMO_SOURCE) {
+      return NextResponse.json(
+        createApiErrorBody({
+          code: "FORBIDDEN",
+          message: "Only demo-scoped flags are archivable in public mode.",
+          requestId,
+        }),
+        { status: 403, headers: { "x-request-id": requestId } },
+      );
+    }
+
     const archived = await archiveFlag(id);
 
     if (!archived) {

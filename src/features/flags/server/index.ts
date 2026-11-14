@@ -5,6 +5,7 @@ export {
   updateFlagSchema,
   evaluateFlagSchema,
   listFlags,
+  countActiveFlagsBySource,
   createFlag,
   getFlagById,
   updateFlag,
